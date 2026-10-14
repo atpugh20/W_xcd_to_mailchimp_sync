@@ -80,6 +80,8 @@ def main():
     list_id = config.MC_MAIN_LIST_ID
     # list_id = config.MC_TEST_LIST_ID
 
+    print("Test from github webapp")
+    
     while True:
         sync_interval = 30  # seconds
 
