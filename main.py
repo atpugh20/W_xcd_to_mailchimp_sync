@@ -75,7 +75,7 @@ def start_interval(sync_interval):
 def main():
     testing = False
     last_manual = False
-    new_email_cache = False
+    new_email_cache = True
 
     list_id = config.MC_MAIN_LIST_ID
     # list_id = config.MC_TEST_LIST_ID
