@@ -80,11 +80,9 @@ def main():
     list_id = config.MC_MAIN_LIST_ID
     # list_id = config.MC_TEST_LIST_ID
 
-    print("Test from github webapp")
-    
-    while True:
-        sync_interval = 30  # seconds
+    error_reset_time = 30  #seconds
 
+    while True:
         # Time / Memory Tracking
         start_time = time.perf_counter()
         tracemalloc.start()
@@ -96,44 +94,50 @@ def main():
         else:
             date = dates["last_update"]
 
-        if new_email_cache:
-            pull_new_email_cache(list_id)
-            new_email_cache = False
-
+        # Grab cache from MC
+        while new_email_cache:
+            if pull_new_email_cache(list_id):
+                new_email_cache = False
+            else:
+                time.sleep(error_reset_time)
+ 
         # Get XCD contacts
         print(f"Checking updates since: {date}")
         print("Creating [search_id]...")
-        uuids = get_contact_uuids(date, testing)
-        if len(uuids) > 0:
+
+        # Get UUIDs for all contacts
+        uuids = []
+        while len(uuids) == 0:
+            uuids = get_contact_uuids(date, testing)
+            if len(uuids) == 0:
+                print("No UUIDs pulled. Trying again.")
+
+        # Use UUIDs to get extra information for the contacts
+        contacts = []
+        while len(contacts) == 0:
             contacts = get_all_user_info(uuids)
+            if len(contacts) == 0:
+                print("No contacts pulled. Trying again.")
 
-            if len(contacts) > 0:
 
-                # Update emails in MC
-                update_mc_emails(contacts, list_id)
+        # Update emails in MC
+        update_mc_emails(contacts, list_id)
 
-                # Update rest of data
-                push_to_mailchimp(contacts, list_id)
+        # Update rest of data
+        push_to_mailchimp(contacts, list_id)
 
-                # Save current date as last_update
-                dates["last_update"] = dt.now().strftime("%m-%d-%Y")
-                if last_manual:
-                    dates["last_manual"] = dates["last_update"]
+        # Save current date as last_update
+        dates["last_update"] = dt.now().strftime("%m-%d-%Y")
+        if last_manual:
+            dates["last_manual"] = dates["last_update"]
 
-                save_file(dates, dates_file_path)
-            else:
-                print("No contacts pulled from UUID's.")
-        else:
-            print("No changes yet.")
+        save_file(dates, dates_file_path)
 
         # Time / Memory Logging
-        time_passed = log_time(start_time)
+        log_time(start_time)
         log_memory()
         tracemalloc.stop()
 
-        # Wait for next loop
-        if time_passed < sync_interval:
-            start_interval(int(sync_interval - time_passed))
 
 
 if __name__ == "__main__":

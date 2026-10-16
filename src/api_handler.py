@@ -35,7 +35,7 @@ def pull_api(url: str) -> list | dict:
         APIConnectionError: Request failure
         APIResponseError:   Invalid or unexpected JSON responses.
     """
-    max_fails = 10
+    max_fails = 100
     wait_time = 5
 
     for i in range(max_fails):
@@ -270,7 +270,7 @@ def push_to_mailchimp(contacts: dict, list_id: str) -> None:
     # print(last_response)
 
 
-def pull_new_email_cache(list_id: str) -> None:
+def pull_new_email_cache(list_id: str) -> bool:
     offset = 0
     page_size = 1000
     email_map = {}
@@ -300,7 +300,9 @@ def pull_new_email_cache(list_id: str) -> None:
         print()
         path = f"./cache/email-map-{list_id}.json"
         save_file(email_map, path)
+        return True
 
     except ApiClientError as e:
         print(f"Status: {e.status_code}")
         print(e.text)
+        return False
