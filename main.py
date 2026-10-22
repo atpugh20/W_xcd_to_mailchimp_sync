@@ -73,70 +73,74 @@ def start_interval(sync_interval):
 
 
 def main():
+    # Time / Memory Tracking
+    start_time = time.perf_counter()
+    tracemalloc.start()
+
     testing = False
     last_manual = False
-    new_email_cache = True
-
     list_id = config.MC_MAIN_LIST_ID
     # list_id = config.MC_TEST_LIST_ID
 
     error_reset_time = 30  #seconds
 
-    while True:
-        # Time / Memory Tracking
-        start_time = time.perf_counter()
-        tracemalloc.start()
+    print("=================================================")
+    print(f"Starting sync: {dt.today()}")
+    print("=================================================")
 
-        # Get date for XCD Pull
-        dates = load_dates()
-        if last_manual:
-            date = dates["last_manual"]
+    # Grab cache from MC
+    new_email_cache = True
+    while new_email_cache:
+        if pull_new_email_cache(list_id):
+            new_email_cache = False
         else:
-            date = dates["last_update"]
+            time.sleep(error_reset_time)
 
-        # Grab cache from MC
-        while new_email_cache:
-            if pull_new_email_cache(list_id):
-                new_email_cache = False
-            else:
-                time.sleep(error_reset_time)
- 
-        # Get XCD contacts
-        print(f"Checking updates since: {date}")
-        print("Creating [search_id]...")
+    # Get date for XCD Pull
+    dates = load_dates()
+    if last_manual:
+        date = dates["last_manual"]
+    else:
+        date = dates["last_update"]
 
-        # Get UUIDs for all contacts
-        uuids = []
-        while len(uuids) == 0:
-            uuids = get_contact_uuids(date, testing)
-            if len(uuids) == 0:
-                print("No UUIDs pulled. Trying again.")
+    # Get XCD contacts
+    print(f"Checking updates since: {date}")
+    print("Creating [search_id]...")
 
-        # Use UUIDs to get extra information for the contacts
-        contacts = []
-        while len(contacts) == 0:
-            contacts = get_all_user_info(uuids)
-            if len(contacts) == 0:
-                print("No contacts pulled. Trying again.")
+    # Get UUIDs for all contacts
+    uuids = []
+    while len(uuids) == 0:
+        uuids = get_contact_uuids(date, testing)
+        if len(uuids) == 0:
+            print("No UUIDs pulled. Trying again.")
+
+    # Use UUIDs to get extra information for the contacts
+    contacts = []
+    while len(contacts) == 0:
+        contacts = get_all_user_info(uuids)
+        if len(contacts) == 0:
+            print("No contacts pulled. Trying again.")
 
 
-        # Update emails in MC
-        update_mc_emails(contacts, list_id)
+    # Update emails in MC
+    update_mc_emails(contacts, list_id)
+    
+    # Update rest of data
+    push_to_mailchimp(contacts, list_id)
 
-        # Update rest of data
-        push_to_mailchimp(contacts, list_id)
+    # Save current date as last_update
+    dates["last_update"] = dt.now().strftime("%m-%d-%Y")
+    if last_manual:
+        dates["last_manual"] = dates["last_update"]
 
-        # Save current date as last_update
-        dates["last_update"] = dt.now().strftime("%m-%d-%Y")
-        if last_manual:
-            dates["last_manual"] = dates["last_update"]
+    save_file(dates, dates_file_path)
 
-        save_file(dates, dates_file_path)
+    # Time / Memory Logging
+    log_time(start_time)
+    log_memory()
+    tracemalloc.stop()
 
-        # Time / Memory Logging
-        log_time(start_time)
-        log_memory()
-        tracemalloc.stop()
+    print("Finished syncing.")
 
 
 

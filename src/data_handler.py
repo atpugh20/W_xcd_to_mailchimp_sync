@@ -45,6 +45,7 @@ def extract_important_fields(contact, uuid) -> dict:
         "State": "STATE",
         "Company": "INST",
         "CustomField_54": "SUBSPECIAL",
+        "CustomField_65": "STATUS"
     }
 
     state_countries = ["United States", "US", "Canada", "CA"]

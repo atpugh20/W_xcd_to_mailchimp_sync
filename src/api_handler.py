@@ -148,7 +148,6 @@ def get_all_user_info(uuids: list):
 
     for uuid in uuids:
         counter += 1
-        print(f"\rContacts: {counter}/{total}", end="", flush=True)
         contact = get_user_info(uuid)
 
         # Skip Opt-outs
@@ -166,7 +165,7 @@ def get_all_user_info(uuids: list):
             "merge_fields": extract_important_fields(contact, uuid),
         }
 
-    print()  # skip a line to counter the \r
+    print(f"Pulled {len(contacts)} contacts.")  # skip a line to counter the \r
     return contacts
 
 
@@ -201,10 +200,11 @@ def update_mc_email(new_email: str, old_email: str, list_id: str) -> bool:
 
 
 def update_mc_emails(contacts: dict, list_id: str):
-    """
-    Updates all the changed emails for
-    """
+    an_update_was_made = False
+
     email_cache = load_file(f"./cache/email-map-{list_id}.json")
+    if len(email_cache) == 0: 
+        return False
 
     for uuid, contact in contacts.items():
         new_email = contact["email_address"]
@@ -215,10 +215,14 @@ def update_mc_emails(contacts: dict, list_id: str):
 
         if update_mc_email(new_email, old_email, list_id):
             email_cache[uuid] = new_email
+            an_update_was_made = True
         else:
             contact["email_address"] = old_email
+    
+    if (an_update_was_made):
+        save_email_map(contacts, list_id)
 
-    save_email_map(contacts, list_id)
+    return an_update_was_made
 
 
 def push_chunk(chunk: list, list_id: str) -> list:
@@ -296,8 +300,8 @@ def pull_new_email_cache(list_id: str) -> bool:
                 email_map[uuid] = email
 
             offset += page_size
-            print(f"\r{len(email_map)} emails pulled.", end="", flush=True)
-        print()
+
+        print(f"{len(email_map)} emails pulled from MailChimp for local cache.")
         path = f"./cache/email-map-{list_id}.json"
         save_file(email_map, path)
         return True
